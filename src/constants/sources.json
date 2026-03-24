@@ -1,0 +1,72 @@
+[
+  {
+    "id": "arxiv_physics",
+    "name": "Arxiv Physics",
+    "url": "http://export.arxiv.org/api/query?search_query=all:quantum+OR+all:anomaly&start=0&max_results=5",
+    "type": "xml",
+    "category": "Science"
+  },
+  {
+    "id": "nasa_apod",
+    "name": "NASA APOD",
+    "url": "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY",
+    "type": "json",
+    "category": "Space"
+  },
+  {
+    "id": "hn_top",
+    "name": "HackerNews Top",
+    "url": "https://hacker-news.firebaseio.com/v0/topstories.json",
+    "type": "hn_ids",
+    "category": "Tech"
+  },
+  {
+    "id": "usgs_quakes",
+    "name": "USGS Earthquakes",
+    "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson",
+    "type": "json",
+    "category": "Geography"
+  },
+  {
+    "id": "openlibrary",
+    "name": "OpenLibrary Recent",
+    "url": "https://openlibrary.org/recentchanges.json?limit=5",
+    "type": "json",
+    "category": "Art"
+  },
+  {
+    "id": "wikipedia_recent",
+    "name": "Wikipedia Recent",
+    "url": "https://en.wikipedia.org/w/api.php?action=query&list=recentchanges&rcprop=title|ids|timestamp&format=json&origin=*",
+    "type": "json",
+    "category": "Social"
+  },
+  {
+    "id": "github_events",
+    "name": "GitHub Events",
+    "url": "https://api.github.com/events",
+    "type": "json",
+    "category": "Software"
+  },
+  {
+    "id": "reddit_conspiracy",
+    "name": "Reddit Conspiracy",
+    "url": "https://www.reddit.com/r/conspiracy/new.json?limit=5",
+    "type": "json",
+    "category": "Social"
+  },
+  {
+    "id": "worldbank_indicators",
+    "name": "WorldBank Data",
+    "url": "https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&per_page=5",
+    "type": "json",
+    "category": "Demographics"
+  },
+  {
+    "id": "openweather_global",
+    "name": "OpenWeather Anomalies",
+    "url": "https://api.openweathermap.org/data/2.5/weather?q=London&appid=bd5e378503939ddaee76f12ad7a97608",
+    "type": "json",
+    "category": "Geography"
+  }
+]

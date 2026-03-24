@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: signals
+    // Fields: title (string), summary (string), source (string), timestamp (string), tags (list), temporalWindows (list), embedding (list), fileUrl (string), authorUid (string)
+    //
+    // Collection: weakSignals
+    // Fields: content (string), score (number), timestamp (string)
+    //
+    // Collection: userSources/{uid}/{sourceId}
+    // Fields: name (string), type (string), url (string), active (bool)
+    //
+    // Collection: botUsers
+    // Fields: chatId (string), userId (string), username (string)
+    //
+    // Collection: systemState
+    // Fields: escalation (number), destab (number), attentionSpike (number), lastUpdated (string)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "mikle339900@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidSignal(data) {
+      return data.keys().hasAll(['title', 'summary', 'source', 'timestamp']) &&
+             data.title is string && data.title.size() < 200 &&
+             data.summary is string && data.summary.size() < 5000 &&
+             data.source is string &&
+             data.timestamp is string;
+    }
+
+    function isValidUserSource(data) {
+      return data.keys().hasAll(['name', 'type', 'url', 'active']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.type in ['rss', 'telegram', 'reddit'] &&
+             data.url is string &&
+             data.active is bool;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /signals/{signalId} {
+      allow read: if true; // Public read for dashboard visibility
+      allow create: if isAuthenticated() && isValidSignal(request.resource.data) && 
+                    (request.resource.data.authorUid == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    match /weakSignals/{weakSignalId} {
+      allow read: if true; // Public read for dashboard visibility
+      allow create: if isAuthenticated(); // Usually created by background processes/admins
+      allow update, delete: if isAdmin();
+    }
+
+    match /userSources/{uid}/{sourceId} {
+      allow read, write: if isOwner(uid) && isValidUserSource(request.resource.data);
+    }
+
+    match /botUsers/{chatId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create, update: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isAdmin());
+    }
+
+    match /systemState/{stateId} {
+      allow read: if true; // Public read for dashboard visibility
+      allow write: if isAdmin();
+    }
+
+    match /theories/{theoryId} {
+      allow read: if true; // Public read for dashboard visibility
+      allow write: if isAuthenticated() && (request.resource.data.authorUid == request.auth.uid || isAdmin());
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

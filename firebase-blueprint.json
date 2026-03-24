@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "Signal": {
+      "title": "Signal",
+      "description": "A discrete piece of intelligence or observation.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Short summary of the signal" },
+        "summary": { "type": "string", "description": "Detailed description" },
+        "source": { "type": "string", "description": "Origin of the signal (API, File, User)" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "temporalWindows": { "type": "array", "items": { "type": "string" }, "description": "Time periods this signal relates to" },
+        "embedding": { "type": "array", "items": { "type": "number" }, "description": "Vector representation for semantic search" },
+        "fileUrl": { "type": "string", "description": "Link to original file in Storage if applicable" },
+        "authorUid": { "type": "string", "description": "UID of the user who injected the signal" },
+        "processedFrom": { "type": "string", "description": "Name of the file this signal was extracted from" },
+        "status": { "type": "string", "description": "Current processing status (extracted, verified, archived)" }
+      },
+      "required": ["title", "summary", "source", "timestamp"]
+    },
+    "WeakSignal": {
+      "title": "Weak Signal",
+      "description": "Signals with low confidence or high noise threshold.",
+      "type": "object",
+      "properties": {
+        "content": { "type": "string" },
+        "score": { "type": "number", "description": "Confidence score < 0.3" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "UserSource": {
+      "title": "User Source",
+      "description": "Custom RSS, Telegram, or Reddit sources added by users.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["rss", "telegram", "reddit"] },
+        "url": { "type": "string" },
+        "active": { "type": "boolean" }
+      }
+    },
+    "BotUser": {
+      "title": "Bot User",
+      "description": "Mapping between Telegram Chat ID and Firebase User ID.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" }
+      }
+    },
+    "SystemState": {
+      "title": "System State",
+      "description": "Global metrics of the narrative engine.",
+      "type": "object",
+      "properties": {
+        "escalation": { "type": "number" },
+        "destab": { "type": "number" },
+        "attentionSpike": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/signals/{signalId}": {
+      "schema": "Signal",
+      "description": "Primary intelligence signals"
+    },
+    "/weakSignals/{weakSignalId}": {
+      "schema": "WeakSignal",
+      "description": "Low-threshold signals for pattern detection"
+    },
+    "/userSources/{uid}/{sourceId}": {
+      "schema": "UserSource",
+      "description": "Custom user-defined intelligence sources"
+    },
+    "/botUsers/{chatId}": {
+      "schema": "BotUser",
+      "description": "Telegram bot user mapping"
+    },
+    "/systemState/global": {
+      "schema": "SystemState",
+      "description": "Global engine metrics"
+    }
+  }
+}
