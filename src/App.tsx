@@ -34,7 +34,7 @@ import {
   Upload
 } from 'lucide-react';
 import { useFirebase } from './context/FirebaseContext';
-import { db, collection, onSnapshot, doc, setDoc, handleFirestoreError, OperationType, storage, ref, uploadBytes, query, where, orderBy, limit, getDocs } from './firebase';
+import { db, collection, onSnapshot, doc, setDoc, handleFirestoreError, OperationType, storage, ref, uploadBytes, query, where, orderBy, limit, getDocs, getCountFromServer } from './firebase';
 import { 
   generateTheories, 
   Theory, 
@@ -92,14 +92,24 @@ export default function App() {
   const [theoryLimit, setTheoryLimit] = useState(50);
   const [hasMore, setHasMore] = useState(true);
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const systemStateRef = React.useRef(systemState);
 
-  // Check Database Connection
+  useEffect(() => {
+    systemStateRef.current = systemState;
+  }, [systemState]);
+
+  // Check Database Connection & Get Total Count
   useEffect(() => {
     const checkConnection = async () => {
       try {
         // Simple ping to Firestore
-        await getDocs(query(collection(db, 'theories'), limit(1)));
+        const snapshot = await getDocs(query(collection(db, 'theories'), limit(1)));
         setDbStatus('online');
+        
+        // Get total count
+        const countSnapshot = await getCountFromServer(collection(db, 'theories'));
+        setTotalRecords(countSnapshot.data().count);
       } catch (error) {
         console.error("Database connection failed:", error);
         setDbStatus('offline');
@@ -127,11 +137,19 @@ export default function App() {
       );
     }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const fetchedTheories = snapshot.docs.map(doc => doc.data() as Theory);
       setTheories(fetchedTheories);
       setHasMore(snapshot.docs.length === theoryLimit);
       setLoading(false);
+
+      // Update total count whenever data changes
+      try {
+        const countSnapshot = await getCountFromServer(collection(db, 'theories'));
+        setTotalRecords(countSnapshot.data().count);
+      } catch (error) {
+        console.error("Failed to update total count:", error);
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'theories');
     });
@@ -209,31 +227,35 @@ export default function App() {
         runBackgroundSync();
       }, 300000);
 
-      // System State Simulation (Escalation logic)
-      const stateInterval = setInterval(async () => {
-        const currentEscalation = typeof systemState.escalation === 'number' ? systemState.escalation : 0.12;
-        const currentDestab = typeof systemState.destab === 'number' ? systemState.destab : 0.05;
+      // System State Simulation (Escalation logic) - Only for admin to avoid conflicts
+      let stateInterval: any = null;
+      if (user.email === "mikle339900@gmail.com") {
+        stateInterval = setInterval(async () => {
+          const currentEscalation = typeof systemStateRef.current.escalation === 'number' ? systemStateRef.current.escalation : 0.12;
+          const currentDestab = typeof systemStateRef.current.destab === 'number' ? systemStateRef.current.destab : 0.05;
 
-        const newState = {
-          escalation: Math.min(1, Math.max(0, currentEscalation + (Math.random() * 0.02 - 0.005))),
-          destab: Math.min(1, Math.max(0, currentDestab + (Math.random() * 0.01))),
-          attentionSpike: Math.random(),
-          lastUpdated: new Date().toISOString()
-        };
-        
-        try {
-          await setDoc(doc(db, 'systemState', 'global'), newState, { merge: true });
-        } catch (error) {
-          handleFirestoreError(error, OperationType.WRITE, 'systemState/global');
-        }
-      }, 60000); // Update every minute
+          const newState = {
+            escalation: Math.min(1, Math.max(0, currentEscalation + (Math.random() * 0.02 - 0.005))),
+            destab: Math.min(1, Math.max(0, currentDestab + (Math.random() * 0.01))),
+            attentionSpike: Math.random(),
+            lastUpdated: new Date().toISOString()
+          };
+          
+          try {
+            await setDoc(doc(db, 'systemState', 'global'), newState, { merge: true });
+          } catch (error) {
+            // Silent fail for state updates to avoid spamming
+            console.error("System state update failed:", error);
+          }
+        }, 60000); // Update every minute
+      }
 
       return () => {
         clearInterval(syncInterval);
-        clearInterval(stateInterval);
+        if (stateInterval) clearInterval(stateInterval);
       };
     }
-  }, [user, systemState.escalation, systemState.destab]);
+  }, [user]);
 
   // Historical Data Sync - Only run once on mount if user exists
   useEffect(() => {
@@ -332,7 +354,17 @@ export default function App() {
     try {
       addLog("Перехват глобальных потоков сигналов...");
       const res = await fetch('/api/signals');
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setSignals(data);
       addLog("Сигналы захвачены. Синтез мифологий...");
       
@@ -495,7 +527,7 @@ ${theory.prediction}
             <div className="space-y-1">
               <p className="micro-label">Паттерны</p>
               <p className="text-xs font-bold font-mono text-emerald-500 leading-none">
-                {theories.length}
+                {totalRecords !== null ? totalRecords : theories.length}
               </p>
             </div>
             <div className="space-y-1">
@@ -513,7 +545,7 @@ ${theory.prediction}
                   dbStatus === 'offline' ? "text-red-500" : 
                   "text-white/30"
                 )}>
-                  {dbStatus === 'online' ? 'ONLINE' : dbStatus === 'offline' ? 'OFFLINE' : 'WAIT'}
+                  {dbStatus === 'online' ? `ONLINE ${totalRecords !== null ? `[${totalRecords}]` : ''}` : dbStatus === 'offline' ? 'OFFLINE' : 'WAIT'}
                 </p>
               </div>
             </div>
@@ -580,7 +612,7 @@ ${theory.prediction}
               animate={{ height: 'auto', opacity: 1 }}
               className="hardware-surface rounded-2xl p-5 border border-white/10"
             >
-              <Dashboard theories={theories} systemState={systemState} />
+              <Dashboard theories={theories} systemState={systemState} totalRecords={totalRecords} />
             </motion.div>
           )}
 
@@ -936,7 +968,7 @@ ${theory.prediction}
                 exit={{ opacity: 0, height: 0 }}
                 className="overflow-hidden hardware-surface rounded-2xl p-6 border border-white/10"
               >
-                <Dashboard theories={theories} systemState={systemState} />
+                <Dashboard theories={theories} systemState={systemState} totalRecords={totalRecords} />
               </motion.div>
             )}
           </AnimatePresence>

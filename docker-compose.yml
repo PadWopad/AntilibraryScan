@@ -1,23 +1,33 @@
 version: '3.8'
 
 services:
-  antilibrary-scan:
+  # --- SurrealDB (Local Database) ---
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    container_name: surrealdb
+    user: root
+    command: start --log trace --user root --pass root file://data/database.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./surreal_data:/data
+    restart: always
+
+  # --- Coincidence Laboratory App ---
+  antilibrary:
     build: .
-    container_name: antilibrary-scan
+    container_name: antilibrary
+    depends_on:
+      - surrealdb
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      # --- Gemini API ---
       - GEMINI_API_KEY=your_gemini_api_key_here
-      
-      # --- Firebase Config ---
-      - VITE_FIREBASE_API_KEY=your_firebase_api_key_here
-      - VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-      - VITE_FIREBASE_PROJECT_ID=your_project_id
-      - VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-      - VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-      - VITE_FIREBASE_APP_ID=your_app_id
-      - VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
-      - VITE_FIREBASE_DATABASE_ID=(default)
+      # SurrealDB Config
+      - VITE_SURREAL_URL=http://surrealdb:8000/rpc
+      - VITE_SURREAL_USER=root
+      - VITE_SURREAL_PASS=root
+      - VITE_SURREAL_NS=antilibrary
+      - VITE_SURREAL_DB=antilibrary

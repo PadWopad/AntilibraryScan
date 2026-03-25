@@ -56,7 +56,18 @@ export async function processAndStoreSignal(signal: RawSignal) {
 export async function runBackgroundSync() {
   try {
     const response = await fetch('/api/sources/fetch');
-    const { signals } = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    const { signals } = data;
 
     if (!signals || !Array.isArray(signals)) return;
 

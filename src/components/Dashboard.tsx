@@ -21,9 +21,10 @@ interface DashboardProps {
     lastUpdated: any;
   };
   theories: any[];
+  totalRecords: number | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ systemState, theories }) => {
+const Dashboard: React.FC<DashboardProps> = ({ systemState, theories, totalRecords }) => {
   // Generate mock temporal data based on theories
   const temporalData = Array.from({ length: 7 }).map((_, i) => {
     const date = new Date();
@@ -79,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({ systemState, theories }) => {
           </div>
           <div>
             <p className="micro-label text-white/40 uppercase tracking-widest">Всего паттернов</p>
-            <p className="text-2xl font-bold">{theories.length}</p>
+            <p className="text-2xl font-bold">{totalRecords !== null ? totalRecords : theories.length}</p>
           </div>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4">

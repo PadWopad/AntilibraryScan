@@ -39,20 +39,51 @@ service cloud.firestore {
           (request.auth.token.email == "mikle339900@gmail.com" && request.auth.token.email_verified == true));
     }
 
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+             request.resource.data[field].size() >= minLen &&
+             request.resource.data[field].size() <= maxLen;
+    }
+
     function isValidSignal(data) {
+      let allowedFields = ['title', 'summary', 'source', 'timestamp', 'tags', 'temporalWindows', 'embedding', 'fileUrl', 'authorUid', 'processedFrom', 'status'];
       return data.keys().hasAll(['title', 'summary', 'source', 'timestamp']) &&
-             data.title is string && data.title.size() < 200 &&
-             data.summary is string && data.summary.size() < 5000 &&
+             hasOnlyAllowedFields(allowedFields) &&
+             validStringLength('title', 1, 500) &&
+             validStringLength('summary', 1, 10000) &&
              data.source is string &&
              data.timestamp is string;
     }
 
     function isValidUserSource(data) {
+      let allowedFields = ['name', 'type', 'url', 'active'];
       return data.keys().hasAll(['name', 'type', 'url', 'active']) &&
-             data.name is string && data.name.size() < 100 &&
+             hasOnlyAllowedFields(allowedFields) &&
+             validStringLength('name', 1, 200) &&
              data.type in ['rss', 'telegram', 'reddit'] &&
              data.url is string &&
              data.active is bool;
+    }
+
+    function isValidTheory(data) {
+      let allowedFields = ['id', 'title', 'thesis', 'observations', 'connections', 'persuasionIndex', 'artisticPower', 'counterArgument', 'criticalAnalysis', 'prediction', 'category', 'status', 'version', 'parentTheoryId', 'oracleScore', 'lastUpdated', 'authorUid'];
+      return data.keys().hasAll(['id', 'title', 'thesis', 'observations', 'connections', 'persuasionIndex', 'artisticPower', 'counterArgument', 'criticalAnalysis', 'prediction', 'category', 'status', 'version', 'lastUpdated']) &&
+             hasOnlyAllowedFields(allowedFields) &&
+             data.id is string &&
+             validStringLength('title', 1, 1000) &&
+             validStringLength('thesis', 1, 10000) &&
+             data.observations is list &&
+             data.connections is list &&
+             data.persuasionIndex is int &&
+             data.artisticPower is int &&
+             data.category in ["синхронизация", "символизм", "напряжение", "география", "алгоритмика", "история"] &&
+             data.status in ["Черновик", "Активно", "Подтверждено", "Опровергнуто"] &&
+             data.version is int &&
+             data.lastUpdated is int;
     }
 
     // ===============================================================
@@ -93,7 +124,11 @@ service cloud.firestore {
 
     match /theories/{theoryId} {
       allow read: if true; // Public read for dashboard visibility
-      allow write: if isAuthenticated() && (request.resource.data.authorUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTheory(request.resource.data) && 
+                    (request.resource.data.authorUid == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && isValidTheory(request.resource.data) && 
+                    (request.resource.data.authorUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
     }
 
     match /users/{userId} {
